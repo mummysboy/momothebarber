@@ -33,7 +33,7 @@ export default async function HomePage() {
             src="/logo-mark.jpg"
             alt="Momo The Barber logo"
             width={110}
-            height={93}
+            height={87}
             priority
             className="mx-auto mb-8 mix-blend-multiply"
           />

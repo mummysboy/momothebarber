@@ -17,6 +17,15 @@ export const metadata: Metadata = {
   description:
     "Classic cuts, hot towel shaves, and traditional barbering inside Cable Car Clothiers, San Francisco's Financial District. Book online.",
   metadataBase: new URL("https://www.momothebarber.com"),
+  openGraph: {
+    title: "Momo The Barber",
+    description:
+      "Traditional barbering inside Cable Car Clothiers, San Francisco. Book online.",
+    url: "https://www.momothebarber.com",
+    siteName: "Momo The Barber",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({

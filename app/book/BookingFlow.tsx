@@ -7,6 +7,18 @@ import { fetchSlots, submitBooking } from "./actions";
 
 type DateOption = { date: string; label: string };
 
+// "10:30 AM" → Morning · "12:15 PM"–"4:45 PM" → Afternoon · "5:00 PM"+ → Evening
+function groupSlots(slots: Slot[]): { name: string; slots: Slot[] }[] {
+  const period = (label: string) => {
+    if (label.endsWith("AM")) return "Morning";
+    const hour = Number(label.split(":")[0]);
+    return hour === 12 || hour < 5 ? "Afternoon" : "Evening";
+  };
+  return ["Morning", "Afternoon", "Evening"]
+    .map((name) => ({ name, slots: slots.filter((s) => period(s.label) === name) }))
+    .filter((g) => g.slots.length > 0);
+}
+
 type Props = {
   services: Service[];
   dates: DateOption[];
@@ -163,20 +175,32 @@ export default function BookingFlow({ services, dates, rescheduleService, onPick
                 No openings this day — try another date.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {slots.map((s) => (
-                  <button
-                    key={s.startsAt}
-                    type="button"
-                    onClick={() => setSlot(s)}
-                    className={`border px-4 py-2 font-sans text-sm transition-colors ${
-                      slot?.startsAt === s.startsAt
-                        ? "border-brand-red bg-brand-red text-cream"
-                        : "border-ink bg-cream hover:bg-cream-dark"
-                    }`}
-                  >
-                    {s.label}
-                  </button>
+              <div className="space-y-8">
+                {groupSlots(slots).map((group) => (
+                  <div key={group.name}>
+                    <div className="flex items-center gap-4">
+                      <span className="font-sans text-xs font-semibold uppercase tracking-[0.3em] text-ink-soft">
+                        {group.name}
+                      </span>
+                      <span aria-hidden className="h-px flex-1 bg-ink/20" />
+                    </div>
+                    <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                      {group.slots.map((s) => (
+                        <button
+                          key={s.startsAt}
+                          type="button"
+                          onClick={() => setSlot(s)}
+                          className={`border py-2.5 text-center font-sans text-sm tabular-nums transition-colors ${
+                            slot?.startsAt === s.startsAt
+                              ? "border-brand-red bg-brand-red font-semibold text-cream"
+                              : "border-ink bg-cream hover:bg-cream-dark"
+                          }`}
+                        >
+                          {s.label.replace(/ [AP]M$/, "")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "./db";
 
-export type SmsKind = "confirmation" | "reminder" | "cancellation";
+export type SmsKind = "confirmation" | "reminder" | "cancellation" | "owner";
 
 function twilioConfig() {
   const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGING_SERVICE_SID } = process.env;

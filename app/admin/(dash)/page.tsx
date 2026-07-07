@@ -115,6 +115,15 @@ export default async function AdminAgendaPage({
                 )}
                 {b.source === "admin" && " · added by you"}
               </p>
+              {b.status === "confirmed" && b.customer_phone && (
+                <p
+                  className={`mt-1 font-sans text-xs uppercase tracking-[0.15em] ${
+                    b.customer_confirmed_at ? "text-ink" : "text-brand-red"
+                  }`}
+                >
+                  {b.customer_confirmed_at ? "✓ Confirmed by text" : "Awaiting “Y” reply"}
+                </p>
+              )}
             </div>
             {b.status === "confirmed" ? (
               <AgendaActions bookingId={b.id} />

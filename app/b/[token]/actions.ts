@@ -5,7 +5,11 @@ import { cancelBooking, getBookingByToken, rescheduleBooking } from "@/lib/booki
 export async function cancelByToken(token: string): Promise<{ ok: boolean; error?: string }> {
   const booking = await getBookingByToken(token);
   if (!booking) return { ok: false, error: "Booking not found." };
-  const result = await cancelBooking({ bookingId: booking.id, notifyCustomer: true });
+  const result = await cancelBooking({
+    bookingId: booking.id,
+    notifyCustomer: true,
+    notifyOwner: true,
+  });
   return result.ok ? { ok: true } : { ok: false, error: result.error };
 }
 

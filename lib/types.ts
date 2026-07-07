@@ -21,6 +21,8 @@ export type Booking = {
   source: "web" | "admin";
   manage_token: string;
   reminder_sid: string | null;
+  customer_confirmed_at: string | null;
+  owner_alert_sid: string | null;
   created_at: string;
   cancelled_at: string | null;
 };
@@ -48,5 +50,6 @@ export type Settings = {
   shop_name: string;
   shop_address: string;
   shop_phone: string;
+  owner_phone: string;
   timezone: string;
 };

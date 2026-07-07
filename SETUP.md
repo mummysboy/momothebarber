@@ -38,12 +38,24 @@ supabase db query 'select kind, to_phone, send_at, body from sms_outbox order by
    US numbers won't deliver until approved.
 4. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID`.
    Until these are set the site works fully, logging SMS to `sms_outbox`.
+5. **Inbound texts (reply-Y confirmations):** in the Messaging Service →
+   Integration, set "Send a webhook" for incoming messages to
+   `https://www.momothebarber.com/api/sms` (HTTP POST). The route validates
+   Twilio's `X-Twilio-Signature`, so only real Twilio requests are accepted
+   once `TWILIO_AUTH_TOKEN` is set.
 
 How reminders work: when a booking is created we immediately send the
 confirmation and schedule the reminder with Twilio (`sendAt` = 2 hours before
 the appointment). No cron job. Cancelling/rescheduling cancels the scheduled
 message via the stored SID. Bookings made less than ~2h15m ahead skip the
 reminder (Twilio needs 15 min lead).
+
+How owner notifications work: Momo's number lives in `settings.owner_phone`.
+He gets a text on every web booking, reschedule, and client cancellation. Each
+booking also schedules a "hasn't confirmed" alert to Momo at **45 minutes
+before** the appointment; when the client texts back **Y**, the webhook marks
+the booking confirmed, cancels that alert, and texts Momo the confirmation.
+Any other inbound text is forwarded to Momo's phone.
 
 ### 3. Vercel (hosting + domain)
 1. Push the repo to GitHub, import into Vercel.

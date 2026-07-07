@@ -5,6 +5,7 @@ import { cancelScheduledSms, normalizeUsPhone, sendSms } from "./sms";
 import type { BookingWithService, Service, Settings } from "./types";
 
 const REMINDER_LEAD_MIN = 120; // "2 hours before"
+const OWNER_ALERT_LEAD_MIN = 45; // warn Momo if the client hasn't replied Y by then
 const TWILIO_MIN_SCHEDULE_MIN = 16; // Twilio requires sendAt ≥ 15 min out
 
 export type BookingResult =
@@ -19,15 +20,30 @@ function whenPhrase(startsAt: string | Date, settings: Settings) {
   return formatInTimeZone(startsAt, settings.timezone, "EEE, MMM d 'at' h:mm a");
 }
 
-async function sendConfirmationAndReminder(booking: {
-  id: string;
-  starts_at: string;
-  customer_phone: string;
-  manage_token: string;
-  serviceName: string;
-}): Promise<void> {
+/** Text Momo. Returns the Twilio SID when scheduled/sent, null in outbox mode. */
+async function notifyOwner(
+  settings: Settings,
+  body: string,
+  opts: { bookingId?: string; sendAt?: Date } = {},
+): Promise<string | null> {
+  if (!settings.owner_phone) return null;
+  return sendSms({ to: settings.owner_phone, kind: "owner", body, ...opts });
+}
+
+async function sendBookingTexts(
+  booking: {
+    id: string;
+    starts_at: string;
+    customer_name: string;
+    customer_phone: string;
+    manage_token: string;
+    serviceName: string;
+  },
+  opts: { isAdmin: boolean; ownerLabel: string },
+): Promise<void> {
   const settings = await getSettings();
   const when = whenPhrase(booking.starts_at, settings);
+  const startTime = formatInTimeZone(booking.starts_at, settings.timezone, "h:mm a");
   const manageUrl = `${siteUrl()}/b/${booking.manage_token}`;
 
   await sendSms({
@@ -37,27 +53,52 @@ async function sendConfirmationAndReminder(booking: {
     body:
       `${settings.shop_name}: you're booked — ${booking.serviceName}, ${when}. ` +
       `${settings.shop_address} (inside Cable Car Clothiers). ` +
-      `Cancel or reschedule: ${manageUrl}`,
+      `Reply Y to confirm. Cancel or reschedule: ${manageUrl}`,
   });
 
-  const reminderAt = new Date(
-    new Date(booking.starts_at).getTime() - REMINDER_LEAD_MIN * 60_000,
-  );
+  // Momo hears about bookings clients made themselves; not ones he entered.
+  if (!opts.isAdmin) {
+    await notifyOwner(
+      settings,
+      `${opts.ownerLabel}: ${booking.customer_name} — ${booking.serviceName}, ${when}. ` +
+        `${booking.customer_phone}`,
+      { bookingId: booking.id },
+    );
+  }
+
   const minSendAt = new Date(Date.now() + TWILIO_MIN_SCHEDULE_MIN * 60_000);
-  if (reminderAt < minSendAt) return; // booked too close to the appointment
+  const startsAtMs = new Date(booking.starts_at).getTime();
+  const updates: { reminder_sid?: string; owner_alert_sid?: string } = {};
 
-  const reminderTime = formatInTimeZone(booking.starts_at, settings.timezone, "h:mm a");
-  const sid = await sendSms({
-    to: booking.customer_phone,
-    kind: "reminder",
-    bookingId: booking.id,
-    sendAt: reminderAt,
-    body:
-      `Reminder: ${booking.serviceName} with ${settings.shop_name} today at ${reminderTime}. ` +
-      `${settings.shop_address}. Running late or need to change? ${siteUrl()}/b/${booking.manage_token}`,
-  });
-  if (sid) {
-    await supabaseAdmin().from("bookings").update({ reminder_sid: sid }).eq("id", booking.id);
+  const reminderAt = new Date(startsAtMs - REMINDER_LEAD_MIN * 60_000);
+  if (reminderAt >= minSendAt) {
+    const sid = await sendSms({
+      to: booking.customer_phone,
+      kind: "reminder",
+      bookingId: booking.id,
+      sendAt: reminderAt,
+      body:
+        `Reminder: ${booking.serviceName} with ${settings.shop_name} today at ${startTime}. ` +
+        `${settings.shop_address}. Not confirmed yet? Reply Y. ` +
+        `Running late or need to change? ${manageUrl}`,
+    });
+    if (sid) updates.reminder_sid = sid;
+  }
+
+  // Scheduled heads-up to Momo, cancelled the moment the client replies Y.
+  const alertAt = new Date(startsAtMs - OWNER_ALERT_LEAD_MIN * 60_000);
+  if (alertAt >= minSendAt) {
+    const sid = await notifyOwner(
+      settings,
+      `Heads up: ${booking.customer_name} (${startTime} ${booking.serviceName}) ` +
+        `hasn't replied Y to confirm. ${booking.customer_phone}`,
+      { bookingId: booking.id, sendAt: alertAt },
+    );
+    if (sid) updates.owner_alert_sid = sid;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await supabaseAdmin().from("bookings").update(updates).eq("id", booking.id);
   }
 }
 
@@ -67,6 +108,8 @@ export async function createBooking(input: {
   name: string;
   phone: string;
   source?: "web" | "admin";
+  /** How the text to Momo is labelled — "Rescheduled" when moving a booking. */
+  ownerLabel?: string;
 }): Promise<BookingResult> {
   const db = supabaseAdmin();
   const isAdmin = input.source === "admin";
@@ -111,7 +154,7 @@ export async function createBooking(input: {
       customer_phone: phone ?? "",
       source: input.source ?? "web",
     })
-    .select("id, starts_at, customer_phone, manage_token")
+    .select("id, starts_at, customer_name, customer_phone, manage_token")
     .single();
 
   if (error || !booking) {
@@ -124,7 +167,10 @@ export async function createBooking(input: {
   }
 
   if (phone) {
-    await sendConfirmationAndReminder({ ...booking, serviceName: service.name });
+    await sendBookingTexts(
+      { ...booking, serviceName: service.name },
+      { isAdmin, ownerLabel: input.ownerLabel ?? "New booking" },
+    );
   }
   return { ok: true, manageToken: booking.manage_token };
 }
@@ -141,6 +187,8 @@ export async function getBookingByToken(token: string): Promise<BookingWithServi
 export async function cancelBooking(opts: {
   bookingId: string;
   notifyCustomer: boolean;
+  /** Text Momo about it — true for cancellations the client made themselves. */
+  notifyOwner?: boolean;
 }): Promise<BookingResult> {
   const db = supabaseAdmin();
   const { data: booking } = await db
@@ -163,17 +211,28 @@ export async function cancelBooking(opts: {
   }
 
   await cancelScheduledSms(booking.reminder_sid);
-  if (opts.notifyCustomer && booking.customer_phone) {
+  await cancelScheduledSms(booking.owner_alert_sid);
+  if ((opts.notifyCustomer && booking.customer_phone) || opts.notifyOwner) {
     const settings = await getSettings();
-    await sendSms({
-      to: booking.customer_phone,
-      kind: "cancellation",
-      bookingId: booking.id,
-      body:
-        `${settings.shop_name}: your ${booking.services.name} on ` +
-        `${whenPhrase(booking.starts_at, settings)} has been cancelled. ` +
-        `Rebook anytime: ${siteUrl()}/book`,
-    });
+    const when = whenPhrase(booking.starts_at, settings);
+    if (opts.notifyCustomer && booking.customer_phone) {
+      await sendSms({
+        to: booking.customer_phone,
+        kind: "cancellation",
+        bookingId: booking.id,
+        body:
+          `${settings.shop_name}: your ${booking.services.name} on ` +
+          `${when} has been cancelled. ` +
+          `Rebook anytime: ${siteUrl()}/book`,
+      });
+    }
+    if (opts.notifyOwner) {
+      await notifyOwner(
+        settings,
+        `Cancelled: ${booking.customer_name} — ${booking.services.name}, ${when}.`,
+        { bookingId: booking.id },
+      );
+    }
   }
   return { ok: true, manageToken: booking.manage_token };
 }
@@ -197,6 +256,7 @@ export async function rescheduleBooking(
     name: booking.customer_name,
     phone: booking.customer_phone,
     source: booking.source,
+    ownerLabel: "Rescheduled",
   });
   if (!rebooked.ok) {
     // Put the original slot back rather than leaving the customer with nothing.
@@ -206,4 +266,60 @@ export async function rescheduleBooking(
       .eq("id", booking.id);
   }
   return rebooked;
+}
+
+/**
+ * Client texted "Y": mark their next appointment confirmed, cancel the
+ * scheduled "hasn't confirmed" alert, and tell Momo. Returns the reply text.
+ */
+export async function confirmFromSms(fromPhone: string): Promise<string> {
+  const db = supabaseAdmin();
+  const settings = await getSettings();
+  const { data } = await db
+    .from("bookings")
+    .select("*, services(*)")
+    .eq("customer_phone", fromPhone)
+    .eq("status", "confirmed")
+    .gt("starts_at", new Date().toISOString())
+    .order("starts_at")
+    .limit(1);
+  const booking = data?.[0] as BookingWithService | undefined;
+
+  if (!booking) {
+    return (
+      `${settings.shop_name}: we couldn't find an upcoming appointment for ` +
+      `this number. Book one at ${siteUrl()}/book`
+    );
+  }
+  const when = whenPhrase(booking.starts_at, settings);
+  if (booking.customer_confirmed_at) {
+    return `You're already confirmed — see you ${when}!`;
+  }
+
+  await db
+    .from("bookings")
+    .update({ customer_confirmed_at: new Date().toISOString(), owner_alert_sid: null })
+    .eq("id", booking.id);
+  await cancelScheduledSms(booking.owner_alert_sid);
+  await notifyOwner(
+    settings,
+    `Confirmed: ${booking.customer_name} — ${booking.services.name}, ${when}.`,
+    { bookingId: booking.id },
+  );
+  return `You're confirmed — ${booking.services.name}, ${when}. See you then!`;
+}
+
+/** Any other inbound text ("running late", questions) gets forwarded to Momo. */
+export async function relayInboundToOwner(fromPhone: string, body: string): Promise<void> {
+  const db = supabaseAdmin();
+  const settings = await getSettings();
+  // Attach a name when we recognize the number from a booking.
+  const { data } = await db
+    .from("bookings")
+    .select("customer_name")
+    .eq("customer_phone", fromPhone)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const who = data?.[0]?.customer_name ? `${data[0].customer_name} (${fromPhone})` : fromPhone;
+  await notifyOwner(settings, `Text from ${who}: ${body.slice(0, 500)}`);
 }

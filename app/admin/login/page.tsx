@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { login } from "../actions";
 
 export default async function LoginPage({
@@ -9,6 +10,14 @@ export default async function LoginPage({
   return (
     <main className="flex flex-1 items-center justify-center px-6">
       <form action={login} className="deco-frame w-full max-w-sm bg-cream px-8 py-10">
+        <Image
+          src="/logo-mark.jpg"
+          alt=""
+          width={88}
+          height={70}
+          priority
+          className="mx-auto mb-4 mix-blend-multiply"
+        />
         <h1 className="text-center font-display text-2xl font-bold">Momo The Barber</h1>
         <p className="mt-1 text-center font-sans text-xs uppercase tracking-[0.25em] text-ink-soft">
           Shop dashboard

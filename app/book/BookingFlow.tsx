@@ -105,9 +105,12 @@ export default function BookingFlow({ services, dates, rescheduleService, onPick
           110 Sutter St, Suite 108 (inside Cable Car Clothiers)
         </p>
         <p className="mt-6 text-sm text-ink-soft">
-          A confirmation text is on its way — <strong>reply Y</strong> to
-          confirm your spot. You&rsquo;ll get a reminder 2 hours before, and the
-          link in the text lets you cancel or reschedule.
+          A confirmation text is on its way — reply <strong>Y</strong>
+          {" "}to confirm your spot. You&rsquo;ll get a reminder 2 hours
+          before, and the link in the text lets you cancel or reschedule.
+        </p>
+        <p className="mt-4 text-sm italic text-ink-soft">
+          We accept all forms of payment — cash preferred.
         </p>
       </div>
     );

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/db";
 import type { BusinessHours, Service } from "@/lib/types";
@@ -27,7 +28,15 @@ export default async function HomePage() {
     <main className="flex-1">
       {/* Hero */}
       <section className="border-b border-ink bg-cream">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center sm:py-28">
+        <div className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-24">
+          <Image
+            src="/logo-mark.jpg"
+            alt="Momo The Barber logo"
+            width={110}
+            height={93}
+            priority
+            className="mx-auto mb-8 mix-blend-multiply"
+          />
           <p className="font-sans text-xs uppercase tracking-[0.35em] text-brand-red">
             Est. San Francisco · Financial District
           </p>
@@ -70,6 +79,31 @@ export default async function HomePage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Gallery */}
+      <section className="border-t border-ink bg-cream">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <h2 className="text-center font-display text-3xl font-bold sm:text-4xl">The Work</h2>
+          <div className="deco-rule mx-auto mt-6 w-16" />
+          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div key={n} className="deco-frame overflow-hidden">
+                <Image
+                  src={`/gallery/cut-${n}.jpg`}
+                  alt="Haircut by Momo The Barber"
+                  width={585}
+                  height={780}
+                  className="aspect-[3/4] w-full object-cover"
+                  sizes="(max-width: 640px) 50vw, 33vw"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="mt-8 text-center text-sm italic text-ink-soft">
+            Every cut finished with a hot towel, in the chair at Cable Car Clothiers.
+          </p>
+        </div>
       </section>
 
       {/* Visit */}

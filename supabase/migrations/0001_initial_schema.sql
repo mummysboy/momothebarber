@@ -1,5 +1,5 @@
 -- Momo The Barber — booking engine schema
-create extension if not exists btree_gist;
+create extension if not exists btree_gist with schema extensions;
 
 create table public.services (
   id uuid primary key default gen_random_uuid(),

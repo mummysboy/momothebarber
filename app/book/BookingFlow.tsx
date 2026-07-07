@@ -243,7 +243,11 @@ export default function BookingFlow({ services, dates, rescheduleService, onPick
                 </label>
               </div>
               <p className="mt-3 text-xs text-ink-soft">
-                We text your confirmation and a reminder 2 hours before — no spam, ever.
+                By booking, you agree to receive appointment text messages from
+                Momo The Barber (confirmation, a reminder 2 hours before, and any
+                changes). Msg &amp; data rates may apply; frequency varies by
+                appointment. Reply STOP to opt out, HELP for help. No marketing,
+                ever. <a href="/privacy" className="underline">Privacy policy</a>.
               </p>
             </>
           )}

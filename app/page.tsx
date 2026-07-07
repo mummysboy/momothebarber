@@ -29,21 +29,30 @@ export default async function HomePage() {
       {/* Hero */}
       <section className="border-b border-ink bg-cream">
         <div className="mx-auto max-w-4xl px-6 py-16 text-center sm:py-24">
+          {/* Logo lockup — Momo's mark with the wordmark set to match his card */}
           <Image
             src="/logo-mark.jpg"
             alt="Momo The Barber logo"
-            width={110}
-            height={87}
+            width={130}
+            height={103}
             priority
-            className="mx-auto mb-8 mix-blend-multiply"
+            className="mx-auto mix-blend-multiply"
           />
-          <p className="font-sans text-xs uppercase tracking-[0.35em] text-brand-red">
-            Est. San Francisco · Financial District
-          </p>
-          <h1 className="mt-6 font-display text-5xl font-bold tracking-tight sm:text-7xl">
+          <div
+            aria-hidden
+            className="mx-auto mt-4 flex w-40 items-center gap-3 text-[#263248]"
+          >
+            <span className="h-px flex-1 bg-[#263248]" />
+            <span className="text-xs leading-none">★</span>
+            <span className="h-px flex-1 bg-[#263248]" />
+          </div>
+          <h1 className="mt-5 font-sans text-4xl font-black uppercase tracking-[0.06em] text-[#263248] sm:text-6xl">
             Momo The Barber
           </h1>
-          <div className="deco-rule mx-auto mt-8 w-24" />
+          <p className="mt-3 font-sans text-sm font-medium uppercase tracking-[0.5em] text-[#263248]/80 sm:text-base">
+            Hair Cut and Shave
+          </p>
+          <div className="deco-rule mx-auto mt-10 w-24" />
           <p className="mx-auto mt-8 max-w-xl text-lg leading-relaxed text-ink-soft">
             Traditional barbering inside Cable Car Clothiers, San Francisco&rsquo;s
             British goods store since 1939. Classic cuts, hot lather, and the

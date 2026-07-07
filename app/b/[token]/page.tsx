@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatInTimeZone } from "date-fns-tz";
 import { getBookingByToken } from "@/lib/booking";
@@ -27,11 +28,18 @@ export default async function ManagePage({
   return (
     <main className="flex-1">
       <header className="border-b border-ink">
-        <div className="mx-auto flex max-w-3xl items-baseline justify-between px-6 py-6">
-          <Link href="/" className="font-display text-xl font-bold">
-            Momo The Barber
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/logo-mark.jpg"
+              alt=""
+              width={44}
+              height={35}
+              className="mix-blend-multiply"
+            />
+            <span className="font-display text-xl font-bold">Momo The Barber</span>
           </Link>
-          <span className="font-sans text-xs uppercase tracking-[0.25em] text-ink-soft">
+          <span className="text-right font-sans text-xs uppercase tracking-[0.25em] text-ink-soft">
             Your appointment
           </span>
         </div>
